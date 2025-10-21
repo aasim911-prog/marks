@@ -150,20 +150,20 @@ const TeacherDashboard = ({ user, onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2" data-testid="dashboard-title">
+            <h1 className="text-4xl font-bold text-blue-900 mb-2" data-testid="dashboard-title">
               Teacher Dashboard
             </h1>
-            <p className="text-gray-600">Welcome, {user.name}</p>
+            <p className="text-blue-700">Welcome, {user.name}</p>
           </div>
           <Button
             onClick={onLogout}
             variant="outline"
-            className="gap-2"
+            className="gap-2 border-blue-300 hover:bg-blue-50"
             data-testid="logout-button"
           >
             <LogOut className="w-4 h-4" />
@@ -172,9 +172,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
         </div>
 
         {/* Semester Selector */}
-        <Card className="mb-6 bg-white/80 backdrop-blur-sm shadow-lg border-2 border-purple-100">
+        <Card className="mb-6 bg-white shadow-lg border-2 border-blue-100">
           <CardHeader>
-            <CardTitle className="text-xl">Select Semester</CardTitle>
+            <CardTitle className="text-xl text-blue-900">Select Semester</CardTitle>
           </CardHeader>
           <CardContent>
             <Select value={selectedSemester.toString()} onValueChange={(val) => setSelectedSemester(parseInt(val))}>
@@ -191,12 +191,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
         </Card>
 
         <Tabs defaultValue="subjects" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2 bg-white/80 backdrop-blur-sm">
-            <TabsTrigger value="subjects" className="gap-2" data-testid="subjects-tab">
+          <TabsList className="grid w-full max-w-md grid-cols-2 bg-white">
+            <TabsTrigger value="subjects" className="gap-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900" data-testid="subjects-tab">
               <BookOpen className="w-4 h-4" />
               Subjects
             </TabsTrigger>
-            <TabsTrigger value="marks" className="gap-2" data-testid="marks-tab">
+            <TabsTrigger value="marks" className="gap-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900" data-testid="marks-tab">
               <Users className="w-4 h-4" />
               Upload Marks
             </TabsTrigger>
@@ -204,15 +204,15 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
           {/* Subjects Tab */}
           <TabsContent value="subjects">
-            <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-2 border-purple-100">
+            <Card className="bg-white shadow-lg border-2 border-blue-100">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Subjects - Semester {selectedSemester}</CardTitle>
+                  <CardTitle className="text-blue-900">Subjects - Semester {selectedSemester}</CardTitle>
                   <CardDescription>Manage subjects for this semester</CardDescription>
                 </div>
                 <Dialog open={showSubjectDialog} onOpenChange={setShowSubjectDialog}>
                   <DialogTrigger asChild>
-                    <Button className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600" data-testid="add-subject-button">
+                    <Button className="gap-2 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900" data-testid="add-subject-button">
                       <Plus className="w-4 h-4" />
                       Add Subject
                     </Button>
@@ -250,7 +250,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                           data-testid="subject-credits-input"
                         />
                       </div>
-                      <Button onClick={handleAddSubject} className="w-full" data-testid="save-subject-button">
+                      <Button onClick={handleAddSubject} className="w-full bg-blue-600 hover:bg-blue-700" data-testid="save-subject-button">
                         Add Subject
                       </Button>
                     </div>
@@ -268,12 +268,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
                     {subjects.map((subject) => (
                       <div
                         key={subject.id}
-                        className="p-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg flex justify-between items-center"
+                        className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg flex justify-between items-center border border-blue-200"
                         data-testid={`subject-card-${subject.code}`}
                       >
                         <div>
-                          <h3 className="font-semibold text-lg">{subject.name}</h3>
-                          <p className="text-sm text-gray-600">
+                          <h3 className="font-semibold text-lg text-blue-900">{subject.name}</h3>
+                          <p className="text-sm text-blue-700">
                             {subject.code} • {subject.credits} Credits
                           </p>
                         </div>
@@ -295,9 +295,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
           {/* Upload Marks Tab */}
           <TabsContent value="marks">
-            <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-2 border-purple-100">
+            <Card className="bg-white shadow-lg border-2 border-blue-100">
               <CardHeader>
-                <CardTitle>Upload/Edit Marks - Semester {selectedSemester}</CardTitle>
+                <CardTitle className="text-blue-900">Upload/Edit Marks - Semester {selectedSemester}</CardTitle>
                 <CardDescription>Click on a cell to add or edit marks</CardDescription>
               </CardHeader>
               <CardContent>
@@ -313,10 +313,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b-2 border-purple-200">
-                          <th className="text-left p-3 font-semibold">Student</th>
+                        <tr className="border-b-2 border-blue-200">
+                          <th className="text-left p-3 font-semibold text-blue-900">Student</th>
                           {subjects.map((subject) => (
-                            <th key={subject.id} className="text-center p-3 font-semibold">
+                            <th key={subject.id} className="text-center p-3 font-semibold text-blue-900">
                               {subject.code}
                             </th>
                           ))}
@@ -324,11 +324,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
                       </thead>
                       <tbody>
                         {students.map((student) => (
-                          <tr key={student.id} className="border-b border-gray-200 hover:bg-purple-50">
+                          <tr key={student.id} className="border-b border-blue-100 hover:bg-blue-50">
                             <td className="p-3">
                               <div>
-                                <p className="font-medium">{student.name}</p>
-                                <p className="text-sm text-gray-500">{student.roll_number}</p>
+                                <p className="font-medium text-blue-900">{student.name}</p>
+                                <p className="text-sm text-blue-600">{student.roll_number}</p>
                               </div>
                             </td>
                             {subjects.map((subject) => (
@@ -337,7 +337,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => openEditMarks(student.id, subject.id)}
-                                  className="gap-2"
+                                  className="gap-2 border-blue-300 hover:bg-blue-100"
                                   data-testid={`edit-marks-${student.roll_number}-${subject.code}`}
                                 >
                                   <Edit className="w-3 h-3" />
@@ -406,12 +406,12 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   />
                 </div>
               </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-800">
                   <strong>Note:</strong> Best 2 of 3 internal marks will be considered for total calculation
                 </p>
               </div>
-              <Button onClick={handleUploadMarks} className="w-full" data-testid="save-marks-button">
+              <Button onClick={handleUploadMarks} className="w-full bg-blue-600 hover:bg-blue-700" data-testid="save-marks-button">
                 {editingMarks ? "Update Marks" : "Upload Marks"}
               </Button>
             </div>

@@ -17,7 +17,6 @@ const Login = ({ onLogin }) => {
   const [initLoading, setInitLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize demo data on first load
     const initDemoData = async () => {
       try {
         await axios.post(`${API}/init-demo-data`);
@@ -70,19 +69,19 @@ const Login = ({ onLogin }) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-        <div className="absolute -bottom-1/2 -right-1/4 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+        <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+        <div className="absolute -bottom-1/2 -right-1/4 w-96 h-96 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
       <Card className="w-full max-w-md relative z-10 backdrop-blur-sm bg-white/95 shadow-2xl" data-testid="login-card">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <div className="bg-gradient-to-br from-purple-600 to-pink-600 p-4 rounded-2xl">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-4 rounded-2xl">
               <GraduationCap className="w-12 h-12 text-white" />
             </div>
           </div>
-          <CardTitle className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <CardTitle className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
             AI/ML Department
           </CardTitle>
           <CardDescription className="text-base">
@@ -119,7 +118,7 @@ const Login = ({ onLogin }) => {
             </div>
             <Button
               type="submit"
-              className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium"
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-medium"
               disabled={loading}
               data-testid="login-button"
             >
@@ -142,7 +141,7 @@ const Login = ({ onLogin }) => {
                 type="button"
                 variant="outline"
                 onClick={() => quickLogin("teacher")}
-                className="h-11 border-2 border-purple-200 hover:bg-purple-50"
+                className="h-11 border-2 border-blue-200 hover:bg-blue-50"
                 data-testid="teacher-quick-login"
               >
                 <BookOpen className="w-4 h-4 mr-2" />
@@ -152,7 +151,7 @@ const Login = ({ onLogin }) => {
                 type="button"
                 variant="outline"
                 onClick={() => quickLogin("student")}
-                className="h-11 border-2 border-pink-200 hover:bg-pink-50"
+                className="h-11 border-2 border-cyan-200 hover:bg-cyan-50"
                 data-testid="student-quick-login"
               >
                 <GraduationCap className="w-4 h-4 mr-2" />
