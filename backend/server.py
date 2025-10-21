@@ -248,9 +248,24 @@ async def get_performance(student_id: str):
             subject = await db.subjects.find_one({"id": mark["subject_id"]}, {"_id": 0})
             if subject:
                 credits = subject["credits"]
-                # Convert total to grade point (assuming max 140: best 2 internals (40 each) + final (100))
-                # Grade point on 10 scale
-                grade_point = (mark["total"] / 140) * 10
+                # Convert total to grade point (max: best 2 internals (80) + final (100) = 180)
+                # Convert percentage to 10-point scale
+                percentage = (mark["total"] / 180) * 100
+                # Convert percentage to grade point (10-point scale)
+                if percentage >= 90:
+                    grade_point = 10
+                elif percentage >= 80:
+                    grade_point = 9
+                elif percentage >= 70:
+                    grade_point = 8
+                elif percentage >= 60:
+                    grade_point = 7
+                elif percentage >= 50:
+                    grade_point = 6
+                elif percentage >= 40:
+                    grade_point = 5
+                else:
+                    grade_point = 0
                 
                 sem_credits += credits
                 sem_weighted_sum += grade_point * credits
