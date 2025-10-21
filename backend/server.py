@@ -13,13 +13,115 @@ from datetime import datetime, timezone
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# ------------------------------
+# In-memory DB fallback for local dev
+# ------------------------------
+class _UpdateResult:
+    def __init__(self, matched_count: int):
+        self.matched_count = matched_count
+
+
+class _DeleteResult:
+    def __init__(self, deleted_count: int):
+        self.deleted_count = deleted_count
+
+
+class AsyncInMemoryCursor:
+    def __init__(self, items):
+        self._items = items
+
+    async def to_list(self, length: int):
+        return list(self._items)[:length]
+
+
+class AsyncInMemoryCollection:
+    def __init__(self):
+        self._docs = []
+
+    @staticmethod
+    def _matches(doc, query):
+        for key, value in (query or {}).items():
+            if doc.get(key) != value:
+                return False
+        return True
+
+    @staticmethod
+    def _apply_projection(doc, projection):
+        if not projection:
+            return dict(doc)
+        result = dict(doc)
+        # Only projection used in codebase is {"_id": 0}
+        if projection.get("_id") == 0 and "_id" in result:
+            result.pop("_id", None)
+        return result
+
+    async def find_one(self, query=None, projection=None):
+        for doc in self._docs:
+            if self._matches(doc, query):
+                return self._apply_projection(doc, projection)
+        return None
+
+    def find(self, query=None, projection=None):
+        items = [self._apply_projection(doc, projection) for doc in self._docs if self._matches(doc, query)]
+        return AsyncInMemoryCursor(items)
+
+    async def insert_one(self, doc):
+        self._docs.append(dict(doc))
+        return None
+
+    async def update_one(self, flt, update):
+        set_data = (update or {}).get("$set", {})
+        for doc in self._docs:
+            if self._matches(doc, flt):
+                doc.update(set_data)
+                return _UpdateResult(matched_count=1)
+        return _UpdateResult(matched_count=0)
+
+    async def delete_one(self, flt):
+        for idx, doc in enumerate(self._docs):
+            if self._matches(doc, flt):
+                del self._docs[idx]
+                return _DeleteResult(deleted_count=1)
+        return _DeleteResult(deleted_count=0)
+
+    async def delete_many(self, flt):
+        to_keep = []
+        deleted = 0
+        for doc in self._docs:
+            if self._matches(doc, flt):
+                deleted += 1
+            else:
+                to_keep.append(doc)
+        self._docs = to_keep
+        return _DeleteResult(deleted_count=deleted)
+
+    async def count_documents(self, query=None):
+        return sum(1 for doc in self._docs if self._matches(doc, query))
+
+
+class AsyncInMemoryDB:
+    def __init__(self):
+        self.users = AsyncInMemoryCollection()
+        self.subjects = AsyncInMemoryCollection()
+        self.marks = AsyncInMemoryCollection()
+
+# MongoDB connection (with in-memory fallback)
+mongo_url = os.environ.get('MONGO_URL', 'memory')
+use_memory_db = mongo_url == 'memory' or os.environ.get('DB_IN_MEMORY', 'false').lower() == 'true'
+
+if use_memory_db:
+    client = None
+    db = AsyncInMemoryDB()
+else:
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[os.environ['DB_NAME']]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+@api_router.get("/health")
+async def health():
+    return {"status": "ok"}
 
 # Pydantic Models
 class User(BaseModel):
@@ -96,7 +198,9 @@ async def login(login_data: LoginRequest):
     if user["password"] != login_data.password:
         raise HTTPException(status_code=401, detail="Invalid password")
     
-    return {"user": user, "message": "Login successful"}
+    # Do not expose password in the response
+    sanitized_user = {k: v for k, v in user.items() if k != "password"}
+    return {"user": sanitized_user, "message": "Login successful"}
 
 # User Routes
 @api_router.post("/users", response_model=User)
@@ -339,70 +443,85 @@ async def get_detailed_marks(student_id: str):
 # Initialize demo data
 @api_router.post("/init-demo-data")
 async def init_demo_data():
-    # Check if data already exists
-    existing_users = await db.users.count_documents({})
-    if existing_users > 0:
-        return {"message": "Demo data already exists"}
-    
-    # Create teacher
-    teacher = User(
-        name="Dr. Kumar",
-        email="teacher@aiml.edu",
-        password="teacher",
-        role="teacher"
-    )
-    await db.users.insert_one(teacher.model_dump())
-    
-    # Create students
-    students = [
-        User(
-            name="Rahul Sharma",
-            email="rahul@student.edu",
-            password="student",
-            role="student",
-            roll_number="AIML001",
-            semester=1
-        ),
-        User(
-            name="Priya Patel",
-            email="priya@student.edu",
-            password="student",
-            role="student",
-            roll_number="AIML002",
-            semester=1
-        ),
-        User(
-            name="Amit Kumar",
-            email="amit@student.edu",
-            password="student",
-            role="student",
-            roll_number="AIML003",
-            semester=1
+    """Idempotently ensure demo users and subjects exist.
+
+    This avoids skipping initialization when unrelated users already exist.
+    """
+    # Ensure teacher exists
+    teacher_email = "teacher@aiml.edu"
+    existing_teacher = await db.users.find_one({"email": teacher_email})
+    if not existing_teacher:
+        teacher = User(
+            name="Dr. Kumar",
+            email=teacher_email,
+            password="teacher",
+            role="teacher",
         )
+        await db.users.insert_one(teacher.model_dump())
+
+    # Ensure students exist
+    student_defs = [
+        {
+            "name": "Rahul Sharma",
+            "email": "rahul@student.edu",
+            "password": "student",
+            "role": "student",
+            "roll_number": "AIML001",
+            "semester": 1,
+        },
+        {
+            "name": "Priya Patel",
+            "email": "priya@student.edu",
+            "password": "student",
+            "role": "student",
+            "roll_number": "AIML002",
+            "semester": 1,
+        },
+        {
+            "name": "Amit Kumar",
+            "email": "amit@student.edu",
+            "password": "student",
+            "role": "student",
+            "roll_number": "AIML003",
+            "semester": 1,
+        },
     ]
-    
-    for student in students:
-        await db.users.insert_one(student.model_dump())
-    
-    # Create sample subjects for semester 1
-    subjects = [
-        Subject(name="Machine Learning Fundamentals", code="AIML101", semester=1, credits=4),
-        Subject(name="Python Programming", code="AIML102", semester=1, credits=4),
-        Subject(name="Mathematics for AI", code="AIML103", semester=1, credits=3),
-        Subject(name="Data Structures", code="AIML104", semester=1, credits=4)
+
+    for student_def in student_defs:
+        exists = await db.users.find_one({"email": student_def["email"]})
+        if not exists:
+            await db.users.insert_one(User(**student_def).model_dump())
+
+    # Ensure sample subjects for semester 1 exist
+    subject_defs = [
+        {"name": "Machine Learning Fundamentals", "code": "AIML101", "semester": 1, "credits": 4},
+        {"name": "Python Programming", "code": "AIML102", "semester": 1, "credits": 4},
+        {"name": "Mathematics for AI", "code": "AIML103", "semester": 1, "credits": 3},
+        {"name": "Data Structures", "code": "AIML104", "semester": 1, "credits": 4},
     ]
-    
-    for subject in subjects:
-        await db.subjects.insert_one(subject.model_dump())
-    
-    return {"message": "Demo data initialized successfully"}
+
+    for subject_def in subject_defs:
+        exists = await db.subjects.find_one({"code": subject_def["code"]})
+        if not exists:
+            await db.subjects.insert_one(Subject(**subject_def).model_dump())
+
+    return {"message": "Demo data ready"}
 
 app.include_router(api_router)
 
+# Configure CORS with safe defaults for local dev
+cors_origins_env = os.environ.get("CORS_ORIGINS", "*")
+cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+if not cors_origins:
+    cors_origins = ["*"]
+
+# Starlette forbids allow_credentials with wildcard origins
+allow_credentials = "*" not in cors_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -415,4 +534,9 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client is not None:
+        client.close()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
