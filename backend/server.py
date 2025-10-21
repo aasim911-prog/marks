@@ -288,6 +288,36 @@ async def get_performance(student_id: str):
         "cgpa": round(cgpa, 2)
     }
 
+
+# Get class averages for comparison
+@api_router.get("/class-averages/{semester}")
+async def get_class_averages(semester: int):
+    # Get all marks for the semester
+    all_marks = await db.marks.find({"semester": semester}, {"_id": 0}).to_list(1000)
+    
+    if not all_marks:
+        return {}
+    
+    # Group by subject and calculate average
+    subject_totals = {}
+    subject_counts = {}
+    
+    for mark in all_marks:
+        subject_id = mark["subject_id"]
+        if subject_id not in subject_totals:
+            subject_totals[subject_id] = 0
+            subject_counts[subject_id] = 0
+        
+        subject_totals[subject_id] += mark["total"]
+        subject_counts[subject_id] += 1
+    
+    # Calculate averages
+    averages = {}
+    for subject_id in subject_totals:
+        averages[subject_id] = subject_totals[subject_id] / subject_counts[subject_id]
+    
+    return averages
+
 # Get detailed marks with subject info
 @api_router.get("/detailed-marks/{student_id}")
 async def get_detailed_marks(student_id: str):
