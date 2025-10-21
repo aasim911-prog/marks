@@ -1,6 +1,6 @@
-# Getting Started with Create React App
+# Student Marks Dashboard (Frontend)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the React frontend for the Student Marks Dashboard. It was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
 

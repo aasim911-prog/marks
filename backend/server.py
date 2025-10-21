@@ -9,14 +9,25 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
+from passlib.context import CryptContext
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+# MongoDB connection (with sane defaults for local dev)
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[os.environ.get('DB_NAME', 'appdb')]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -36,6 +47,15 @@ class UserCreate(BaseModel):
     name: str
     email: str
     password: str
+    role: str
+    roll_number: Optional[str] = None
+    semester: Optional[int] = None
+
+class UserPublic(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    email: str
     role: str
     roll_number: Optional[str] = None
     semester: Optional[int] = None
@@ -89,32 +109,38 @@ class MarksUpdate(BaseModel):
 @api_router.post("/auth/login")
 async def login(login_data: LoginRequest):
     user = await db.users.find_one({"email": login_data.email}, {"_id": 0})
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    if user["password"] != login_data.password:
+
+    if not verify_password(login_data.password, user.get("password", "")):
         raise HTTPException(status_code=401, detail="Invalid password")
-    
-    return {"user": user, "message": "Login successful"}
+
+    # Exclude password from response
+    user_public = {k: v for k, v in user.items() if k != "password"}
+
+    return {"user": user_public, "message": "Login successful"}
 
 # User Routes
-@api_router.post("/users", response_model=User)
+@api_router.post("/users", response_model=UserPublic)
 async def create_user(user_data: UserCreate):
-    user_obj = User(**user_data.model_dump())
+    # Hash the password before storing
+    hashed = hash_password(user_data.password)
+    user_obj = User(**{**user_data.model_dump(), "password": hashed})
     doc = user_obj.model_dump()
     await db.users.insert_one(doc)
-    return user_obj
+    # Return public user (without password)
+    return UserPublic(**{k: v for k, v in doc.items() if k != "password"})
 
-@api_router.get("/users", response_model=List[User])
+@api_router.get("/users", response_model=List[UserPublic])
 async def get_users(role: Optional[str] = None):
     query = {"role": role} if role else {}
-    users = await db.users.find(query, {"_id": 0}).to_list(1000)
+    users = await db.users.find(query, {"_id": 0, "password": 0}).to_list(1000)
     return users
 
-@api_router.get("/users/{user_id}", response_model=User)
+@api_router.get("/users/{user_id}", response_model=UserPublic)
 async def get_user(user_id: str):
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -344,11 +370,11 @@ async def init_demo_data():
     if existing_users > 0:
         return {"message": "Demo data already exists"}
     
-    # Create teacher
+    # Create teacher (with hashed password)
     teacher = User(
         name="Dr. Kumar",
         email="teacher@aiml.edu",
-        password="teacher",
+        password=hash_password("teacher"),
         role="teacher"
     )
     await db.users.insert_one(teacher.model_dump())
@@ -358,7 +384,7 @@ async def init_demo_data():
         User(
             name="Rahul Sharma",
             email="rahul@student.edu",
-            password="student",
+            password=hash_password("student"),
             role="student",
             roll_number="AIML001",
             semester=1
@@ -366,7 +392,7 @@ async def init_demo_data():
         User(
             name="Priya Patel",
             email="priya@student.edu",
-            password="student",
+            password=hash_password("student"),
             role="student",
             roll_number="AIML002",
             semester=1
@@ -374,7 +400,7 @@ async def init_demo_data():
         User(
             name="Amit Kumar",
             email="amit@student.edu",
-            password="student",
+            password=hash_password("student"),
             role="student",
             roll_number="AIML003",
             semester=1
